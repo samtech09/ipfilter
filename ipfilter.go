@@ -7,28 +7,27 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/phuslu/iploc"
 	"github.com/tomasen/realip"
 )
 
-//Options for IPFilter. Allow supercedes Block for IP checks
-//across all matching subnets, whereas country checks use the
-//latest Allow/Block setting.
-//IPs can be IPv4 or IPv6 and can optionally contain subnet
-//masks (e.g. /24). Note however, determining if a given IP is
-//included in a subnet requires a linear scan so is less performant
-//than looking up single IPs.
+// Options for IPFilter. Allow supercedes Block for IP checks
+// across all matching subnets, whereas country checks use the
+// latest Allow/Block setting.
+// IPs can be IPv4 or IPv6 and can optionally contain subnet
+// masks (e.g. /24). Note however, determining if a given IP is
+// included in a subnet requires a linear scan so is less performant
+// than looking up single IPs.
 //
-//This could be improved with cidr range prefix tree.
+// This could be improved with cidr range prefix tree.
 type Options struct {
 	//explicity allowed IPs
 	AllowedIPs []string
 	//explicity blocked IPs
 	BlockedIPs []string
-	//explicity allowed country ISO codes
-	AllowedCountries []string
-	//explicity blocked country ISO codes
-	BlockedCountries []string
+	// //explicity allowed country ISO codes
+	//AllowedCountries []string
+	// //explicity blocked country ISO codes
+	//BlockedCountries []string
 	//block by default (defaults to allow)
 	BlockByDefault bool
 	// TrustProxy enable check request IP from proxy
@@ -61,7 +60,7 @@ type subnet struct {
 	allowed bool
 }
 
-//New constructs IPFilter instance without downloading DB.
+// New constructs IPFilter instance without downloading DB.
 func New(opts Options) *IPFilter {
 	if opts.Logger == nil {
 		//disable logging by default
@@ -79,12 +78,12 @@ func New(opts Options) *IPFilter {
 	for _, ip := range opts.AllowedIPs {
 		f.AllowIP(ip)
 	}
-	for _, code := range opts.BlockedCountries {
-		f.BlockCountry(code)
-	}
-	for _, code := range opts.AllowedCountries {
-		f.AllowCountry(code)
-	}
+	// for _, code := range opts.BlockedCountries {
+	// 	f.BlockCountry(code)
+	// }
+	// for _, code := range opts.AllowedCountries {
+	// 	f.AllowCountry(code)
+	// }
 	return f
 }
 
@@ -142,15 +141,15 @@ func (f *IPFilter) ToggleIP(str string, allowed bool) bool {
 	return false
 }
 
-func (f *IPFilter) AllowCountry(code string) {
-	f.ToggleCountry(code, true)
-}
+// func (f *IPFilter) AllowCountry(code string) {
+// 	f.ToggleCountry(code, true)
+// }
 
-func (f *IPFilter) BlockCountry(code string) {
-	f.ToggleCountry(code, false)
-}
+// func (f *IPFilter) BlockCountry(code string) {
+// 	f.ToggleCountry(code, false)
+// }
 
-//ToggleCountry alters a specific country setting
+// ToggleCountry alters a specific country setting
 func (f *IPFilter) ToggleCountry(code string, allowed bool) {
 
 	f.mut.Lock()
@@ -158,19 +157,19 @@ func (f *IPFilter) ToggleCountry(code string, allowed bool) {
 	f.mut.Unlock()
 }
 
-//ToggleDefault alters the default setting
+// ToggleDefault alters the default setting
 func (f *IPFilter) ToggleDefault(allowed bool) {
 	f.mut.Lock()
 	f.defaultAllowed = allowed
 	f.mut.Unlock()
 }
 
-//Allowed returns if a given IP can pass through the filter
+// Allowed returns if a given IP can pass through the filter
 func (f *IPFilter) Allowed(ipstr string) bool {
 	return f.NetAllowed(net.ParseIP(ipstr))
 }
 
-//NetAllowed returns if a given net.IP can pass through the filter
+// NetAllowed returns if a given net.IP can pass through the filter
 func (f *IPFilter) NetAllowed(ip net.IP) bool {
 	//invalid ip
 	if ip == nil {
@@ -198,52 +197,54 @@ func (f *IPFilter) NetAllowed(ip net.IP) bool {
 	if blocked {
 		return false
 	}
-	//check country codes
-	code := NetIPToCountry(ip)
-	if code != "" {
-		if allowed, ok := f.codes[code]; ok {
-			return allowed
-		}
-	}
+
+	// //check country codes
+	// code := NetIPToCountry(ip)
+	// if code != "" {
+	// 	if allowed, ok := f.codes[code]; ok {
+	// 		return allowed
+	// 	}
+	// }
+
 	//use default setting
 	return f.defaultAllowed
 }
 
-//Blocked returns if a given IP can NOT pass through the filter
+// Blocked returns if a given IP can NOT pass through the filter
 func (f *IPFilter) Blocked(ip string) bool {
 	return !f.Allowed(ip)
 }
 
-//NetBlocked returns if a given net.IP can NOT pass through the filter
+// NetBlocked returns if a given net.IP can NOT pass through the filter
 func (f *IPFilter) NetBlocked(ip net.IP) bool {
 	return !f.NetAllowed(ip)
 }
 
-//Wrap the provided handler with simple IP blocking middleware
-//using this IP filter and its configuration
+// Wrap the provided handler with simple IP blocking middleware
+// using this IP filter and its configuration
 func (f *IPFilter) Wrap(next http.Handler) http.Handler {
 	return &ipFilterMiddleware{IPFilter: f, next: next}
 }
 
-//Wrap is equivalent to NewLazy(opts) then Wrap(next)
+// Wrap is equivalent to NewLazy(opts) then Wrap(next)
 func Wrap(next http.Handler, opts Options) http.Handler {
 	return New(opts).Wrap(next)
 }
 
-//IPToCountry is a simple IP-country code lookup.
-//Returns an empty string when cannot determine country.
-func IPToCountry(ipstr string) string {
-	return NetIPToCountry(net.ParseIP(ipstr))
-}
+// //IPToCountry is a simple IP-country code lookup.
+// //Returns an empty string when cannot determine country.
+// func IPToCountry(ipstr string) string {
+// 	return NetIPToCountry(net.ParseIP(ipstr))
+// }
 
-//NetIPToCountry is a simple IP-country code lookup.
-//Returns an empty string when cannot determine country.
-func NetIPToCountry(ip net.IP) string {
-	if ip != nil {
-		return string(iploc.Country(ip))
-	}
-	return ""
-}
+// //NetIPToCountry is a simple IP-country code lookup.
+// //Returns an empty string when cannot determine country.
+// func NetIPToCountry(ip net.IP) string {
+// 	if ip != nil {
+// 		return string(iploc.Country(ip))
+// 	}
+// 	return ""
+// }
 
 type ipFilterMiddleware struct {
 	*IPFilter
@@ -272,20 +273,20 @@ func (m *ipFilterMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.next.ServeHTTP(w, r)
 }
 
-//NewNoDB is the same as New
+// NewNoDB is the same as New
 func NewNoDB(opts Options) *IPFilter {
 	return New(opts)
 }
 
-//NewLazy is the same as New
+// NewLazy is the same as New
 func NewLazy(opts Options) *IPFilter {
 	return New(opts)
 }
 
-func (f *IPFilter) IPToCountry(ipstr string) string {
-	return IPToCountry(ipstr)
-}
+// func (f *IPFilter) IPToCountry(ipstr string) string {
+// 	return IPToCountry(ipstr)
+// }
 
-func (f *IPFilter) NetIPToCountry(ip net.IP) string {
-	return NetIPToCountry(ip)
-}
+// func (f *IPFilter) NetIPToCountry(ip net.IP) string {
+// 	return NetIPToCountry(ip)
+// }
