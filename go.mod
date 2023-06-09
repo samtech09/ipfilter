@@ -1,4 +1,4 @@
-module github.com/jpillora/ipfilter
+module github.com/samtech09/ipfilter
 
 go 1.16
 
